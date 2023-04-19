@@ -223,7 +223,14 @@ class Quantizer(nn.Module):
     # Collects all mappable values
     def flint_value(self,  exp_base = 0):   # exp_base = exponent bias
         ################## Flint Representation #################
-        exp_bias = exp_base - 1
+        
+        # Set exponent bias to emulate previous implementation
+        exp_bias = -num_bits + exp_base
+        if (is_signed):
+            exp_bias = exp_bias + 1
+        
+        #exp_bias = exp_bias - 1    # Alternative: Always have 1 as the lowest non-zero value
+        
         B = num_bits
         if is_signed:
             B = B - 1
