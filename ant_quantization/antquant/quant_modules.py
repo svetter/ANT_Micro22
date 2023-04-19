@@ -223,83 +223,42 @@ class Quantizer(nn.Module):
     # Collects all mappable values
     def flint_value(self,  exp_base = 0):   # exp_base = exponent bias
         ################## Flint Representation #################
-        B = self.bit.item()
-        if self.is_signed:
+        exp_bias = exp_base - 1
+        B = num_bits
+        if is_signed:
             B = B - 1
         # Bit width of value (exponent + mantisse)
-        value_bit = B
-        assert(value_bit >= 2)
-
+        value_bits = B
+        assert(value_bits >= 2)
+        
         # Number of different possible exponents (excluding the zero value where there is no exponent)
-        #exp_num =     value_bit * 2 - 1
-        # Number of different possible negative exponents
-        neg_exp_num = value_bit
-        # Number of different possible positive exponents
-        pos_exp_num = value_bit - 1
-
-        # Highest possible effective exponent (including exponent bias)
-        exp_max = pos_exp_num + exp_base
-        #exp_min = -neg_exp_num
-
+        exp_num = value_bits * 2 - 1
+        
         ## zero
         values = [0.]
-
-        ## exponent negative
-        for i in range(0, neg_exp_num):
-            # exponent bit width
-            exp_bit = i + 2
-            # current exponent value
-            exp_value = -(exp_bit - 1)
-            # mantisse bit width
-            mant_bit = value_bit - exp_bit
-            mant_step = 2 ** (-mant_bit)
-            # for every possible mantisse value
-            for mant_val in range(int(2 ** mant_bit)):
-                fraction_val = 1 + mant_step * mant_val
-                new_val = 2 ** (exp_value + exp_base) * fraction_val
-                values.append(new_val)
-                if self.is_signed:
-                    values.append(-new_val)
-
-        ## exponent zero
-        # exponent bit width
-        exp_bit = 2
-        # current exponent value
-        exp_value = 0
-        # mantisse bit width
-        mant_bit = value_bit - exp_bit
-        mant_step = 2 ** (-mant_bit)
-        # for every possible mantisse value
-        for mant_val in range(int(2 ** mant_bit)):
-            fraction_val = 1 + mant_step * mant_val
-            new_val = 2 ** (exp_value + exp_base) * fraction_val
-            values.append(new_val)
-            if self.is_signed:
-                values.append(-new_val)
-
-        ## exponent positive
-        for i in range(1, pos_exp_num):
-            # exponent bit width
-            exp_bit = i + 2
-            # current exponent value
+        
+        for i in range(1, exp_num):
+            exp_bits = max(value_bits - i + 1, value_bits + i - exp_num + 1)
+            assert(exp_bits >= 2)
             exp_value = i
-            # mantisse bit width
-            mant_bit = value_bit - exp_bit
-            mant_step = 2 ** (-mant_bit)
+            mant_bits = value_bits - exp_bits
+            mant_step = 2 ** (-mant_bits)
             # for every possible mantisse value
-            for mant_val in range(int(2 ** mant_bit)):
+            for mant_val in range(int(2 ** mant_bits)):
                 fraction_val = 1 + mant_step * mant_val
-                new_val = 2 ** (exp_value + exp_base) * fraction_val
+                new_val = 2 ** (exp_value + exp_bias) * fraction_val
                 values.append(new_val)
-                if self.is_signed:
+                if is_signed:
                     values.append(-new_val)
-
+        
         ## max value
+        # Highest possible effective exponent (including exponent bias)
+        exp_max = exp_num + exp_bias
         new_val = 2 ** exp_max
         values.append(new_val)
-        if self.is_signed:
+        if is_signed:
             values.append(-new_val)
-
+        
         return self.convert_tensor(values)
 
     def mse_loss(self, quant_tensor, source_tensor, p=2.0, is_perchannel = True):
