@@ -220,60 +220,85 @@ class Quantizer(nn.Module):
 
         return self.convert_tensor(values)
 
-    def flint_value(self,  exp_base = 0):
+    # Collects all mappable values
+    def flint_value(self,  exp_base = 0):   # exp_base = exponent bias
         ################## Flint Representation #################
         B = self.bit.item()
         if self.is_signed:
             B = B - 1
+        # Bit width of value (exponent + mantisse)
         value_bit = B
         assert(value_bit >= 2)
 
-        exp_num =     value_bit * 2 - 1
-        neg_exp_num = value_bit - 1
+        # Number of different possible exponents (excluding the zero value where there is no exponent)
+        #exp_num =     value_bit * 2 - 1
+        # Number of different possible negative exponents
+        neg_exp_num = value_bit
+        # Number of different possible positive exponents
         pos_exp_num = value_bit - 1
-       
-        
+
+        # Highest possible effective exponent (including exponent bias)
         exp_max = pos_exp_num + exp_base
-        exp_min = -neg_exp_num
+        #exp_min = -neg_exp_num
 
         ## zero
         values = [0.]
 
-        # values = [0.]
-        ## exponent negtive
-        for i in range(0, neg_exp_num + 1):
+        ## exponent negative
+        for i in range(0, neg_exp_num):
+            # exponent bit width
             exp_bit = i + 2
+            # current exponent value
             exp_value = -(exp_bit - 1)
+            # mantisse bit width
             mant_bit = value_bit - exp_bit
-            for j in range(int(2 ** mant_bit)):
-                v = 2 ** (exp_value + exp_base) * (1 + 2 ** (-mant_bit) * j)
-                values.append(v)
+            mant_step = 2 ** (-mant_bit)
+            # for every possible mantisse value
+            for mant_val in range(int(2 ** mant_bit)):
+                fraction_val = 1 + mant_step * mant_val
+                new_val = 2 ** (exp_value + exp_base) * fraction_val
+                values.append(new_val)
                 if self.is_signed:
-                    values.append(-v)
+                    values.append(-new_val)
 
         ## exponent zero
+        # exponent bit width
         exp_bit = 2
+        # current exponent value
         exp_value = 0
+        # mantisse bit width
         mant_bit = value_bit - exp_bit
-        for j in range(int(2 ** mant_bit)):
-            v = 2 ** (exp_value + exp_base) * (1 + 2 ** (-mant_bit) * j)
-            values.append(v)
+        mant_step = 2 ** (-mant_bit)
+        # for every possible mantisse value
+        for mant_val in range(int(2 ** mant_bit)):
+            fraction_val = 1 + mant_step * mant_val
+            new_val = 2 ** (exp_value + exp_base) * fraction_val
+            values.append(new_val)
             if self.is_signed:
-                values.append(-v)
-        ## exponent positive     
+                values.append(-new_val)
+
+        ## exponent positive
         for i in range(1, pos_exp_num):
+            # exponent bit width
             exp_bit = i + 2
+            # current exponent value
             exp_value = i
+            # mantisse bit width
             mant_bit = value_bit - exp_bit
-            for j in range(int(2 ** mant_bit)):
-                v = 2 ** (exp_value + exp_base) * (1 + 2 ** (-mant_bit) * j)
-                values.append(v)
+            mant_step = 2 ** (-mant_bit)
+            # for every possible mantisse value
+            for mant_val in range(int(2 ** mant_bit)):
+                fraction_val = 1 + mant_step * mant_val
+                new_val = 2 ** (exp_value + exp_base) * fraction_val
+                values.append(new_val)
                 if self.is_signed:
-                    values.append(-v)
+                    values.append(-new_val)
+
         ## max value
-        values.append(2 ** exp_max)
+        new_val = 2 ** exp_max
+        values.append(new_val)
         if self.is_signed:
-            values.append(-2 ** exp_max)
+            values.append(-new_val)
 
         return self.convert_tensor(values)
 
